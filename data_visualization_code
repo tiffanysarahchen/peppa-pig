@@ -1,0 +1,239 @@
+""" 
+    This part of the code is not technically part of the data but it helps show the way
+    I visualized my data to determine if the covariant create meaningful relationships.
+    
+    Below is the code I used to visualize relationships between each activity label and 
+    covariant. I played around with this code to compare training data graphs with test 
+    data graphs. 
+    
+    Parts of the definition is commented out because of the way I trained the data to 
+    visualize. Sometimes I wanted to compare different variables with each other, while 
+    other times I just wanted to visualize it independently. I kept the code to help
+    the reader better understand how I played with the data. 
+
+"""
+
+# Creates graphs that break down each activity label with y-axis of ymax and -ymax 
+def graph():
+
+    # 
+    print("All")
+    plt.figure()
+    plt.plot(time, z)
+    plt.axis([0,374952,-ymax,ymax])
+    plt.show()
+
+    #1
+    print("1")
+    plt.figure()
+    plt.subplot(121)
+    plt.plot(time, z)
+    plt.axis([0,8019,-ymax,ymax])
+    plt.subplot(122)
+    plt.plot(time, z)
+    plt.axis([134400,151439,-ymax,ymax])
+    plt.show()
+
+    #2
+    print("2")
+    plt.figure()
+    plt.subplot(131)
+    plt.plot(time, z)
+    plt.axis([8019,96220,-ymax,ymax])
+    plt.subplot(132)
+    plt.plot(time, z)
+    plt.axis([185518,233628,-ymax,ymax])
+    plt.subplot(133)
+    plt.plot(time, z)
+    plt.axis([288754,364929,-ymax,ymax])
+    plt.show()
+
+    # 3
+    print("3")
+    plt.figure()
+    plt.subplot(121)
+    plt.plot(time, z)
+    plt.axis([151439,185518,-ymax,ymax])
+    plt.subplot(122)
+    plt.plot(time, z)
+    plt.axis([234630,287752,-ymax,ymax])
+    plt.show()
+
+    # 4
+    print("4")
+    plt.figure()
+    plt.subplot(121)
+    plt.plot(time, z)
+    plt.axis([96220,133398,-ymax,ymax])
+    plt.subplot(122)
+    plt.plot(time, z)
+    plt.axis([365931,374952,-ymax,ymax])
+    plt.show()
+    
+     # To visualize behavior with each label using a random part of the graph that
+    #  that corresponds with each label
+    print('Behavior')
+    plt.figure()
+    #plt.plot(time, x, color = 'g')
+    #plt.plot(time, y, color = 'b')
+    plt.subplot(221)
+    plt.plot(time, z, color = 'r')
+    p = 2000
+    plt.axis([p, p+5103,-ymax,ymax])
+
+    #plt.plot(time, x, color = 'g')
+    #plt.plot(time, y, color = 'b')
+    plt.subplot(222)
+    plt.plot(time, z, color = 'r')
+    p = 280000
+    plt.axis([p, p+5103,-ymax,ymax])
+
+    #plt.plot(time, x, color = 'g')
+    #plt.plot(time, y, color = 'b')
+    plt.subplot(223)
+    plt.plot(time, z, color = 'r')
+    p = 235000
+    plt.axis([p, p+5103,-ymax,ymax])
+
+    #plt.plot(time, x, color = 'g')
+    #plt.plot(time, y, color = 'b')
+    plt.subplot(224)
+    plt.plot(time, z, color = 'r')
+    p = 96700
+    plt.axis([p, p+5103,-ymax,ymax])
+    plt.show()
+
+
+# Same as graph() but the y axis minimum is set at 0 instead of -ymax
+def graph0():
+
+    # all
+    print("All")
+    plt.figure()
+    plt.plot(time, z)
+    plt.axis([0,374952,0,ymax])
+    plt.show()
+
+    #1
+    print("1")
+    plt.figure()
+    plt.subplot(121)
+    plt.plot(time, z)
+    plt.axis([0,8019,0,ymax])
+    plt.subplot(122)
+    plt.plot(time, z)
+    plt.axis([134400,151439,0,ymax])
+    plt.show()
+
+    #2
+    print("2")
+    plt.figure()
+    plt.subplot(131)
+    plt.plot(time, z)
+    plt.axis([8019,96220,0,ymax])
+    plt.subplot(132)
+    plt.plot(time, z)
+    plt.axis([185518,233628,0,ymax])
+    plt.subplot(133)
+    plt.plot(time, z)
+    plt.axis([288754,364929,0,ymax])
+    plt.show()
+
+    # 3
+    print("3")
+    plt.figure()
+    plt.subplot(121)
+    plt.plot(time, z)
+    plt.axis([151439,185518,0,ymax])
+    plt.subplot(122)
+    plt.plot(time, z)
+    plt.axis([234630,287752,0,ymax])
+    plt.show()
+
+    # 4
+    print("4")
+    plt.figure()
+    plt.subplot(121)
+    plt.plot(time, z)
+    plt.axis([96220,133398,0,ymax])
+    plt.subplot(122)
+    plt.plot(time, z)
+    plt.axis([365931,374952,0,ymax])
+    plt.show()
+    
+        # to visualize behavior with each label
+    print('Behavior')
+    plt.figure()
+    #plt.plot(time, x, color = 'g')
+    #plt.plot(time, y, color = 'b')
+    plt.subplot(221)
+    plt.plot(time, z, color = 'r')
+    p = 2000
+    plt.axis([p, p+5103,0,ymax])
+
+    #plt.plot(time, x, color = 'g')
+    #plt.plot(time, y, color = 'b')
+    plt.subplot(222)
+    plt.plot(time, z, color = 'r')
+    p = 280000
+    plt.axis([p, p+5103,0,ymax])
+
+    #plt.plot(time, x, color = 'g')
+    #plt.plot(time, y, color = 'b')
+    plt.subplot(223)
+    plt.plot(time, z, color = 'r')
+    p = 235000
+    plt.axis([p, p+5103,0,ymax])
+
+    #plt.plot(time, x, color = 'g')
+    #plt.plot(time, y, color = 'b')
+    plt.subplot(224)
+    plt.plot(time, z, color = 'r')
+    p = 96700
+    plt.axis([p, p+5103,0,ymax])
+    plt.show()
+
+    
+    
+    
+    
+"""      To visualize covariant relationships        """ 
+
+
+# I would switch around variables as x, y, and z to visualize
+
+# Import pyplot to graph functions
+import matplotlib.pyplot as plt
+
+# TO visualize the test data
+time_df = test_df.timestamp - test_df.timestamp.iloc[0]
+
+x = test_df['z']
+y = test_df['z_max']
+z = test_df['z_range']
+
+ymax = 2
+
+plt.figure()
+plt.plot(time_df, z)
+plt.axis([0,150000,0,ymax])
+plt.show()
+
+
+
+
+
+# To visualize the training data
+import matplotlib.pyplot as plt
+time = df.timestamp - df.timestamp.iloc[0]
+time = time
+
+x = df['z']
+y = df['z_max']
+z = df['z_range']
+
+ymax = 3
+
+graph0()
+
+
