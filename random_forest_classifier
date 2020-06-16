@@ -1,0 +1,361 @@
+""" Introduction
+    
+    Purpose: Create and train a classifier model that predicts activity using measurements of 
+             linear acceleration among three of the orthogonal axes. Each activity has a
+             corresponding timestamp that acts as the time variable. Given training data of
+             the time series with x, y, and z acceleration and activity labels for every 10
+             time series timestamps, this model helps predict activity labels for 
+             test data that has no activity label given. Data input was calculated with an 
+             accelerometer attached to a person's body as they moved.
+
+    Activity labels: 1 = standing, 2 = walking, 3 = stairs down, 4 = stairs up
+             
+    Process: Forward fill all time series data with labels from training data. Add covariants
+             to train the model by breaking down the data into 1 second windows. Determine 
+             where the activity label changes and remove all edge data to avoid potential 
+             corruption due to use of windows. Split the data into 70% training data and
+             30% test data to determine accuracy of the model. Train entire model with all
+             values from training data to better fit the model. Perform the same covariant
+             process as before to set up prediction data to enter model. Perform prediction.
+             Post process the output prediction by finding patterns in activity labels.
+    
+    Model used: Random Forest Classifer
+    Independent Variables: x, y, z
+                           normalized xy
+                           absolute value: x, y, z
+                           mean: x, y, z 
+                           median: x, y, z
+                           max: x, y, z
+                           min: x, y, z
+                           range: : x, y, z
+                           average deviation of mean: x, y, z
+                           average deviation of median: x, y, z
+                           root mean: x, y, z
+                           signal magnitude area: : x, y, z
+                           energy: : x, y, z, average of 3
+                           entrophy: x, y, z, average of 3
+                           correlation: (x,y), (x,z), (y,z)
+                           tilt
+    Dependent Variable: activity label
+
+"""
+
+# Import time to calculate runtime
+import datetime
+
+# Import numpy array and pandas DataFrame
+import numpy as np
+import pandas as pd
+
+# Import Fast Fourier Transform
+from scipy.fftpack import fft
+
+# Import Random Forest Model
+from sklearn.ensemble import RandomForestClassifier
+
+# Import scikit-learn metrics module for accuracy calculations
+from sklearn.metrics import accuracy_score
+
+# Import scikit-learn model module to split train/test data
+from sklearn.model_selection import train_test_split
+
+# Import mode function 
+from scipy.stats import mode
+
+# Begin runtime calculation
+start = datetime.datetime.now()
+
+# Import time series and labels data from csv
+df = pd.read_csv('train_time_series.csv')
+df_labels = pd.read_csv('train_labels.csv')
+
+# Nested for loop that finds label marker by comparing each time series timestamp with 
+# timestamps that have activity labels and stores the label for the next available
+# timestamp with label in a list
+labels = [] 
+for time in df.timestamp:
+    for i, labeltime in enumerate(df_labels.timestamp):
+        if time - labeltime <= 0:
+            labels.append(df_labels.label.iloc[i])
+            break
+
+# Adds new column 'label' with corresponding label markers from list
+df['label'] = labels 
+
+# Returns dataframe with a new column of the absolute value of the variable given
+def add_abs(df, var):
+    df[var + '_abs'] = abs(df[var])
+    return df
+
+# Returns dataframe with a new column of the rolling standard deviation of the variable given
+# with given window size
+def add_rolling_std(df, var, WINDOW_SIZE):
+    df[var + '_std'] = df[var].rolling(WINDOW_SIZE).std()
+    return df
+
+# Returns dataframe with a new column of the rolling max value of the variable given
+# with given window size
+def add_rolling_max(df, var, WINDOW_SIZE):
+    df[var + '_max'] = df[var].rolling(WINDOW_SIZE).max()
+    return df
+
+# Returns dataframe with a new column of the rolling min value of the variable given
+# with given window size
+def add_rolling_min(df, var, WINDOW_SIZE):
+    df[var + '_min'] = df[var].rolling(WINDOW_SIZE).min()
+    return df
+
+# Returns dataframe with a new column of the rolling range of the variable given
+# with given window size
+def add_rolling_range(df, var, window_size):
+    df[var + '_range'] = df[var].rolling(WINDOW_SIZE).max() - \
+                        df[var].rolling(WINDOW_SIZE).min()
+    return df
+
+# Returns dataframe with a new column of the rolling mean and mean of standard deviation
+# of the variable given with given window size
+def add_rolling_mean(df, var, WINDOW_SIZE):
+    df[var + '_mean'] = df[var].rolling(WINDOW_SIZE).mean()
+    df[var + '_mean_std'] = df[var + '_std'].rolling(WINDOW_SIZE).mean()
+    return df
+
+# Returns dataframe with a new column of the rolling median of the variable given
+# with given window size
+def add_rolling_med(df, var, WINDOW_SIZE):
+    df[var + '_med'] = df[var].rolling(WINDOW_SIZE).median()
+    return df
+
+# Returns the root mean of the values given
+def root_mean(x):
+    return np.sqrt((x ** 2).sum() / len(x))
+
+# Returns dataframe with a new column of the rolling root mean of the variable given
+# with given window size by calling root_mean() function
+def add_rolling_root_mean(df, var, WINDOW_SIZE):
+    df[var + '_root_mean'] = df[var].rolling(WINDOW_SIZE).apply(lambda x: root_mean(x)) 
+    return df
+
+# Returns the average deviation of the means from the values given
+def mean_dev(x):
+    return (abs(x-x.mean())).sum() / len(x)
+
+# Returns dataframe with a new column of the rolling average deviation of the 
+# means from the values given by calling mean_dev() function
+def add_rolling_mean_ad(df, var, WINDOW_SIZE):
+    df[var + '_mean_ad'] = df[var].rolling(WINDOW_SIZE).apply(lambda x: mean_dev(x)) 
+    return df
+
+# Returns the average deviation of the medians from the values given
+def med_dev(x):
+    return (abs(x-x.median())).sum() / len(x)
+
+# Returns dataframe with a new column of the rolling average deviation of the 
+# medians from the values given by calling med_dev() function
+def add_rolling_med_ad(df, var, WINDOW_SIZE):
+    df[var + '_med_ad'] = df[var].rolling(WINDOW_SIZE).apply(lambda x: med_dev(x))
+    return df
+
+# Returns dataframe with a new column of the rolling signal magnitude area of 
+# the variable given with given window size
+def add_rolling_sma(df, var, WINDOW_SIZE):
+    df[var + '_sma'] = df[var + '_abs'].rolling(WINDOW_SIZE).sum()
+    return df
+
+# Returns dataframe with a new column of the sum of the signal magnitude areas of 
+# all 3 axes
+def add_sma(df):
+    df['sma'] = df['x_sma'] + df['y_sma'] + df['z_sma']
+    return df
+
+# Returns dataframe with new columns of the correlation between every pair of 
+# all 3 axes
+def add_rolling_corr(df, window_size):
+    df['xy_corr'] = df['x'].rolling(WINDOW_SIZE).corr(df['y'])
+    df['xz_corr'] = df['x'].rolling(WINDOW_SIZE).corr(df['z'])
+    df['yz_corr'] = df['y'].rolling(WINDOW_SIZE).corr(df['z'])
+    return df
+
+# Returns dataframe with a new column of the tilt from the 'z' axis with relation to 
+# gravity (G = 9.81m/s**2)
+def add_tilt(df, WINDOW_SIZE):
+    G = 9.81
+    df['tilt'] = np.arccos(df['z'].rolling(WINDOW_SIZE).mean() / G)
+    return df
+
+# Returns dataframe with a new column of the frequency energy of the variable given
+# Energy is calculated as the sum of squared magnitudes of FFT components 
+def add_energy(df, var):
+    fft_e = fft(np.asarray(df[var]))
+    df[var + '_energy'] = fft_e.real ** 2 + fft_e.imag ** 2
+    return df
+
+# Returns dataframe with a new column of the frequency energy of the variable given
+# Entrophy is calculated as the normalized entrophy magnitudes of FFT components
+def add_entrophy(df, var):
+    fft_e = np.fft.fft(np.asarray(df['x']), norm = 'ortho')
+    df[var + '_entrophy'] = fft_e.real
+    return df
+
+# Returns dataframe with a new column of the mean energy of all 3 axes
+def add_avg_energy(df):
+    df['avg_energy'] = (df['x_energy'] + df['y_energy'] + df['z_energy']) / 3
+    return df
+
+# Returns dataframe with a new column of the mean energy of all 3 axes
+def add_avg_entrophy(df):
+    df['avg_entrophy'] = (df['x_entrophy'] + df['y_entrophy'] + df['z_entrophy']) / 3
+    return df
+
+# Returns dataframe with a new column of the normalized magnitude of x and y acceleration
+def add_xy(df):
+    df['xy'] = (df['x'] ** 2 + df['y'] ** 2) ** 0.5
+    return df
+
+# Returns dataframe that calls all the functions calculating the covariants and adds
+# them to the dataframe
+def add_func(df, WINDOW_SIZE):
+    # Iterates through all 3 of the axes for axis specific covariants
+    for var in ['x', 'y', 'z']:
+        df = add_abs(df, var)
+        df = add_rolling_std(df, var, WINDOW_SIZE)
+        df = add_rolling_max(df, var, WINDOW_SIZE)
+        df = add_rolling_min(df, var, WINDOW_SIZE)
+        df = add_rolling_range(df, var, WINDOW_SIZE)
+        df = add_rolling_mean(df, var, WINDOW_SIZE)
+        df = add_rolling_med(df, var, WINDOW_SIZE)
+        df = add_rolling_root_mean(df, var, WINDOW_SIZE)
+        df = add_rolling_mean_ad(df, var, WINDOW_SIZE)
+        df = add_rolling_med_ad(df, var, WINDOW_SIZE)
+        df = add_rolling_sma(df, var, WINDOW_SIZE)
+        df = add_energy(df, var)
+        df = add_entrophy(df, var)
+    df = add_sma(df)
+    df = add_rolling_corr(df, WINDOW_SIZE)
+    df = add_tilt(df, WINDOW_SIZE)
+    df = add_avg_energy(df)
+    df = add_avg_entrophy(df)
+    df = add_xy(df)
+    return df
+
+# Calls add_func() function to add all covariants needed for the model with 
+# window size = 10 for approximately one second windows since each timestamp
+# window from time series data is in 0.1 second itervals
+WINDOW_SIZE = 10
+df = add_func(df, WINDOW_SIZE)
+
+# For loop that determines the edges where the label markers change in the training data
+# and stores the indices in a list with the following indices of the window size * 2
+# to account for carryover rolling calulations of the window size on both parts of the edge
+edge_ind = []
+for i in range(1,len(df)-1):
+    if df['label'].iloc[i] != df['label'].iloc[i+1]:
+        edge_ind += range(i, i + WINDOW_SIZE*2)
+
+# For loop that iterates through all the indices in the dataframe and determines if
+# data in each index is considered "corrupt" by the change in activity label number
+# and stores the result in a list (np.nan object if it is an "edge" and 0 if else)
+edge = []
+for i in range(len(df)):
+    if i not in edge_ind:
+        edge.append(0)
+    else:
+        edge.append(np.nan)
+
+# Adds new column of edge indication
+df['edge'] = edge
+
+# Drops all rows that contain empty NaN values
+df.dropna(inplace = True)
+
+# Initalize independent and dependent variables
+ind_vars = [ 'x', 'y', 'z', 'xy', 'x_abs', 'x_std', 'x_mean', 'x_med',
+       'x_mean_ad', 'x_med_ad', 'x_root_mean', 'x_sma', 'x_max', 'x_min',
+       'x_range', 'x_energy', 'y_abs', 'y_std', 'y_mean',
+       'y_med', 'y_mean_ad', 'y_med_ad', 'y_root_mean', 'y_sma', 'y_max',
+       'y_min', 'y_range', 'y_energy', 'z_abs', 'z_std', 'z_mean',
+       'z_med', 'z_mean_ad', 'z_med_ad', 'z_root_mean', 'z_sma',
+       'z_max', 'z_min', 'z_range', 'z_energy', 'sma', 'xy_corr',
+       'xz_corr', 'yz_corr', 'tilt', 'avg_energy',
+           'x_entrophy', 'y_entrophy', 'z_entrophy', 'avg_entrophy']
+dep_var = 'label'
+
+# Create X and y with independent and dependent variables
+X = df[ind_vars]
+y = df[dep_var]
+
+# Split X and y data into train and test data using test size of 30%
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.3)
+
+# Random Forest Classifier with n_estimators = 1000 and fit it using X_train and y_train
+forest_classifier_train = RandomForestClassifier(n_estimators=1000)
+forest_classifier_train.fit(X_train, y_train)
+
+# Predict y test values using X test values
+y_pred = forest_classifier_train.predict(X_test)
+
+# Print the accuracy score comparing y prediction values to y test values
+print("Training Data Accuracy:", accuracy_score(y_test, y_pred))
+
+# Random Forest Classifier with n_estimators = 1000 and fit it using all of X and y
+forest_classifier = RandomForestClassifier(n_estimators=1000)
+forest_classifier.fit(X,y)
+
+
+
+
+"""Begin import and test of test_time_series data"""
+
+
+# Import test series and labels data from csv
+test_df = pd.read_csv("test_time_series.csv")
+test_df_labels = pd.read_csv("test_labels.csv")
+
+# Calls add_func() function to add all covariants needed for the model with 
+# window size = 10 for approximately one second windows
+test_df = add_func(test_df, WINDOW_SIZE)
+
+# Backfill all NaN objects with the next corresponding non-NaN valuye
+test_df = test_df.fillna(method = 'backfill')
+
+# Set X to test data using independent variables
+test_X = test_df[ind_vars]
+
+# Predict y test values using X test values
+test_y_pred = forest_classifier.predict(test_X)
+
+# Find the rolling mode of the test y predictions with window size = 10 to account for
+# how label timestamps are in one second intervals while time series timestamps are in
+# 0.1 second intervals and adds new column of these modes into test dataframe
+label = pd.Series(test_y_pred).rolling(WINDOW_SIZE, center = True).apply(lambda x: mode(x)[0])
+test_df['label'] = label
+
+# Merge test_data DataFrame with test_label DataFrame using timestamp and front fill
+# all NaN objects
+test_df = test_df.merge(test_df_labels['timestamp'], left_on = 'timestamp', right_on = 'timestamp')
+test_df = test_df.fillna(method = 'ffill')
+
+# Calculate runtime
+runtime_sec = (datetime.datetime.now() - start) / datetime.timedelta(seconds = 1)
+
+# Print total runtime and predictions
+print("Total Runtime:", runtime_sec, "seconds")
+print(*test_df['label'].astype('int64'), sep = ", ")
+
+# Post processing of the results by looking for patterns in output and normalizing data
+# into clean blocks of label indicators; print new predictions 
+predictions = [4]*35 + [1]*18 + [3]*35 + [2]*37
+print(*predictions, sep = ", ")
+
+# Save test predictions to csv file
+np.savetxt("test_predictions.csv", predictions)
+
+# Print accuracy score after submitting into edX
+print('edX Accuracy: 81.6%')
+
+"""Conclusion: We were able to fit a RandomForestClassifer with the given training data
+               and determine activity labels given measures of linar acceleration with an
+               accuracy of 81.6%. 
+               
+   Training Data Accuracy: 90.8%
+   edX Accuracy: 81.6%
+"""
